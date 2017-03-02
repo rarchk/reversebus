@@ -1,1 +1,8 @@
-BUS_SERVER 
+{
+	"target_url": "http://webservices.nextbus.com",
+    "mongodb_Address": "mongo",
+    "mongodb_Port": "27017",
+    "redis_Address": "redis",
+    "redis_Port": "6379",
+    "slow_requests_threshold": 1.0
+} 
