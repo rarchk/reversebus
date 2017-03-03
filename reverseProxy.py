@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 __author__ = 'Ronak Kogta<rixor786@gmail.com>'
 __description__ = \
 ''' Edge triggered Reverse proxy broker '''
@@ -9,7 +9,7 @@ import socket;
 import select;
 import argparse;
 import requests;
-import lxml; 
+import xmltodict; 
 import json;  
 
 def parseconfig(configure_options):
@@ -44,13 +44,13 @@ class server():
 		self.configDict = load_config(config_path);
 
 		self.servSock = socket.socket( socket.AF_INET, socket.SOCK_STREAM );
-		self.servSock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); 
+		self.servSock.getsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); 
 		self.servSock.bind((host,port));
 		self.servSock.listen(50);
 		self.servSock.setblocking(0);
 		
 		# Via Disabling Nagle Theorem, echo server packets will not be buffered  
-		self.servSock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1);
+		self.servSock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1);
 
 		# Intializing client dicts
 		self.connections = {}; 
@@ -89,8 +89,9 @@ class server():
 					self.responses[fileno] = "";
 					break;
 
+				(host,port) = self.connections[fileno].getpeername(); 
+				response = self.request_handler(response,host,port);
 				self.responses[fileno] = response;
-				self.request_handler(response,self.connections[fileno].getpeername());
 				 
 					 
 		except socket.error:
@@ -136,18 +137,43 @@ class server():
 		   self.epoll.close();
 		   self.servSock.close();
 
-	def request_handler(self,request,client):
-		print (request,client[0],client[1]);
-		request_headers={};
+	def request_handler(self,request, host, port):
+		base_url = self.configDict['target_url']
+		query_url = "/service/publicXMLFeed?command="
+		route = self.get_http_route(request);
+		 
+		if ('api/agencyList' in route):
+			query_url += "agencyList";
+		elif ('api/routeList' in route):
+			query_url += "routeList&a=" + str(route.split('/')[-1]);	
+		else: 
+			query_url += route; 
+		query_url = base_url + query_url;		
+
+		xml_response = self.keep_alive_session.get(query_url);
+
+		print xml_response.headers
+
+		json_response =  xml_to_json(xml_response.text);
+		return self.get_http_request(json_response,route);
+		
+	def get_http_route(self,request):
+		route = ""
 		for header in request.split("\r\n"):
 			if ("GET" in header):
-				
-				request_headers['GET'] = header.split(" ")[1];
-		print (request_headers)		
+				route = header.split(" ")[1];
+				break;
+		return route;		   
 
-		#req = self.keep_alive_session.get("http://webservices.nextbus.com/");
-		#print (req.headers); 
-		#print (req.text);	   
+	def get_http_request(self,request,route):
+		host = "localhost";
+		port = 8001
+
+		http_request = '''POST {} HTTP/1.1 \r\nContent-Type: application/json\r\nAccept: application/json \r\nHost: {}:{}\r\nContent-Length: {}\n
+		'''.format(route,host,port,len(request)); 
+
+		http_request += request;
+		return http_request;	
 
 	 
 	
