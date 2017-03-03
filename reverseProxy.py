@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 __author__ = 'Ronak Kogta<rixor786@gmail.com>'
 __description__ = \
-''' Edge triggered Echo Server '''
+''' Edge triggered Reverse proxy broker '''
 
 import os;
 import sys;
@@ -90,7 +90,8 @@ class server():
 					break;
 
 				self.responses[fileno] = response;
-				self.request_handler(response); 
+				self.request_handler(response,self.connections[fileno].getpeername());
+				 
 					 
 		except socket.error:
 			pass;		
@@ -117,7 +118,6 @@ class server():
 		      for fileno, event in events:
 		      	 
 				if fileno == self.servSock.fileno():
-					print "hi"									
 					self.accept_connection(); 											  
 									
 				elif event & select.EPOLLIN:
@@ -136,8 +136,15 @@ class server():
 		   self.epoll.close();
 		   self.servSock.close();
 
-	def request_handler(self,request):
-		print (request);
+	def request_handler(self,request,client):
+		print (request,client[0],client[1]);
+		request_headers={};
+		for header in request.split("\r\n"):
+			if ("GET" in header):
+				
+				request_headers['GET'] = header.split(" ")[1];
+		print (request_headers)		
+
 		#req = self.keep_alive_session.get("http://webservices.nextbus.com/");
 		#print (req.headers); 
 		#print (req.text);	   
