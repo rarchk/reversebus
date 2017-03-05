@@ -19,7 +19,7 @@ It depends on
 
 ## Design Specification
 <img src="reverseproxy.png" width="100%" height="auto"/>
-
+*I've used an epoll based socket server as reverse proxy broker, not twisted/flask framework. For caching purpose, I've used Redis.*
 ### Configuration
 You can configure following parameters in `config.json`
 - mongoDb_address  and mongoDb_port 
@@ -68,8 +68,7 @@ We have used MongoDB for our database, as it is highly available and is a good f
 
 ## Caching
 To be done by Redis 
+
 ## References 
 - [Next Bus XML Feed Documentation](http://www.nextbus.com/xmlFeedDocs/NextBusXMLFeed.pdf)
-- [Caching is hard, draw me a picture](http://bizcoder.com/caching-is-hard-draw-me-a-picture)
-- [Problems with caching](https://msol.io/blog/tech/youre-probably-wrong-about-caching/)
-- [Pro Style Testing](https://msol.io/blog/tech/pro-style-testing/)
+g- [Pro Style Testing](https://msol.io/blog/tech/pro-style-testing/)

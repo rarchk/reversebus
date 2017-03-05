@@ -155,7 +155,7 @@ class server():
 		print xml_response.headers
 
 		json_response =  xml_to_json(xml_response.text);
-		return self.get_http_request(json_response,route);
+		return self.build_http_request(json_response,route,xml_response.headers);
 		
 	def get_http_route(self,request):
 		route = ""
@@ -165,14 +165,13 @@ class server():
 				break;
 		return route;		   
 
-	def get_http_request(self,request,route):
-		host = "localhost";
-		port = 8001
+	def build_http_request(self,request,route,headers):
+		headers['content-type'] = 'application/json';
+		http_request = ""; 
+		for i in headers: 
+			http_request += str(i) +": " + str(headers[i]) + "\r\n";
 
-		http_request = '''POST {} HTTP/1.1 \r\nContent-Type: application/json\r\nAccept: application/json \r\nHost: {}:{}\r\nContent-Length: {}\n
-		'''.format(route,host,port,len(request)); 
-
-		http_request += request;
+		http_request += "\r\n"+ request;
 		return http_request;	
 
 	 
