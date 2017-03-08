@@ -1,6 +1,6 @@
 {
 	"target_url": "http://webservices.nextbus.com",
-    "mongodb_Address": "mongo",
+    "mongodb_Address": "mymongo",
     "mongodb_Port": 27017,
     "redis_Address": "redis",
     "redis_Port": 6379,

@@ -14,7 +14,9 @@ import requests;
 import xmltodict; 
 import json;
 import epollServer as epoll;
-import time;    
+import time;
+import stats;
+    
 
 def parseconfig(configure_options):
 	configure_options.add_argument('-p','--port', help='Enter port number', default=8001);
@@ -27,36 +29,27 @@ def xml_to_json(response):
 	del toDict; 
 	return response;				
 
-def connect_redis():
-	return;
-	pass
-
-def connect_mongodb():
-	return;
-	pass
-
-def my_request_handler(epollContext,parameters):
+def request_handler(epollContext,parameters):
 	startTime = time.time();
-	request = str(epollContext[0]);
-	host = str(epollContext[1]);
-	port = int(epollContext[2]);
-	configDict = dict(parameters[0]);
+	request,host,port = epollContext;
+	configDict = parameters[0];
 	
 	try:
-		query_url = get_http_route(request,configDict);
+		route,query_url = get_http_route(request,configDict);
 		if (query_url == ""):
 			json_response = __help_response__;
 
 		elif (query_url == "stats"):
-			json_response = "need stats code now";
+			json_response = stats.show();
 		else:		
 			xml_response = requests.get(query_url);
 			json_response =  xml_to_json(xml_response.text);
-	
+
+		stats.update(time.time() - startTime,route,configDict);	
+
 		return str(time.time() - startTime) + "\n" + query_url + "\n" + json_response;
 	except Exception as e:
 		return ("Bad request: %s\n%s" % (request,__help_response__));
-		 
 	
 def get_http_route(request,configDict):
 	route = ""
@@ -69,7 +62,7 @@ def get_http_route(request,configDict):
 	routers = route.split("/");
 
 	if (route == "/"):
-		return "";
+		return [route,""];
 
 	shortTitles=""
 	if ('useShortTitles' in str(routers[-1])):
@@ -136,7 +129,7 @@ def get_http_route(request,configDict):
 	else:
 		raise Exception;
 
-	return query_url;				
+	return [route,query_url];				
 			   
 
 if __name__ == '__main__':
@@ -146,7 +139,7 @@ if __name__ == '__main__':
 
 	configDict = epoll.load_config(args.config);
 	
-	thisserver = epoll.server(int(args.port),args.host,my_request_handler,[configDict]);
+	thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict]);
 	thisserver.run();
 	
 	
