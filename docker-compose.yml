@@ -1,0 +1,14 @@
+nextbus:
+  build: .
+  command: python reverseProxy.py
+  ports:
+   - "8001:8001"
+  volumes:
+   - .:/code
+  links:
+   - redis
+   - mongo
+redis:
+  image: "redis:alpine"
+mongo:
+  image: "mongo:latest"

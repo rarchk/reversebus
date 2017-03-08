@@ -60,6 +60,7 @@ class server():
 				self.epoll.modify(fileno, select.EPOLLOUT | select.EPOLLET); # Registering for write event 
 				if (self.configDict['tcp_cork']):
 					self.connections[fileno].setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 1)
+				
 				if (len(response) == 0):									 # Client quits 	
 					self.responses[fileno] = "";
 					break;

@@ -2,6 +2,10 @@
 __author__ = 'Ronak Kogta<rixor786@gmail.com>'
 __description__ = \
 ''' Edge triggered Reverse proxy broker '''
+__help_response__ = \
+'''Reverse proxy for NextBus API.\r\n 
+We do not have appropriate response for above request. 
+Please refer https://github.com/rarchk/reversebus#examples'''
 
 import os;
 import sys;
@@ -9,7 +13,8 @@ import argparse;
 import requests;
 import xmltodict; 
 import json;
-import epollServer as epoll;   
+import epollServer as epoll;
+import time;    
 
 def parseconfig(configure_options):
 	configure_options.add_argument('-p','--port', help='Enter port number', default=8001);
@@ -31,6 +36,7 @@ def connect_mongodb():
 	pass
 
 def my_request_handler(epollContext,parameters):
+	startTime = time.time();
 	request = str(epollContext[0]);
 	host = str(epollContext[1]);
 	port = int(epollContext[2]);
@@ -39,8 +45,7 @@ def my_request_handler(epollContext,parameters):
 	try:
 		query_url = get_http_route(request,configDict);
 		if (query_url == ""):
-			json_response = "Welcome! to the reverse proxy of next bus.\r\n \
-			Please refer https://github.com/rarchk/reversebus/README.md/#usage"
+			json_response = __help_response__;
 
 		elif (query_url == "stats"):
 			json_response = "need stats code now";
@@ -48,9 +53,9 @@ def my_request_handler(epollContext,parameters):
 			xml_response = requests.get(query_url);
 			json_response =  xml_to_json(xml_response.text);
 	
-		return json_response;
+		return str(time.time() - startTime) + "\n" + query_url + "\n" + json_response;
 	except Exception as e:
-		return ("Bad request %s" % e);
+		return ("Bad request: %s\n%s" % (request,__help_response__));
 		 
 	
 def get_http_route(request,configDict):
@@ -71,57 +76,63 @@ def get_http_route(request,configDict):
 		shortTitles += "&useShortTitles=True"
 		del routers[-1];
 
-	if ('agencyList' in str(routers[2])):
+	if ('agencyList' in str(routers[3])):
 		query_points = ["agencyList"];
 		query_url += str(query_points[0]);
 
-	elif ('routeList' in str(routers[2])):
+	elif ('routeList' in str(routers[3])):
 		query_points = ["routeList&a="];
-		for i in range(3,len(routers),1):
-			query_url += str(query_points[i-3]) + str(routers[i]);
+		for i in range(4,len(routers),1):
+			query_url += str(query_points[i-4]) + str(routers[i]);
 		
 
-	elif ('stats' in str(routers[2])):
+	elif ('stats' in str(routers[3])):
 		query_url = "stats";
 
-	elif ('routeConfig' in str(routers[2])):
+	elif ('routeConfig' in str(routers[3])):
 		query_points = ["routeConfig&a=","&r="];
-		for i in range(3,len(routers),1):
-			query_url += str(query_points[i-3]) + str(routers[i]);
+		for i in range(4,len(routers),1):
+			query_url += str(query_points[i-4]) + str(routers[i]);
 		query_url += shortTitles;
 		
 
-	elif ('predictByStopId' in str(routers[2])):
+	elif ('predictByStopId' in str(routers[3])):
 		query_points = ["predictions&a=","&stopId=","&routeTag="];
-		for i in range(3,len(routers),1):
-			query_url += str(query_points[i-3]) + str(routers[i]);
+		for i in range(4,len(routers),1):
+			query_url += str(query_points[i-4]) + str(routers[i]);
 		query_url += shortTitles;	
 		
-	elif ('predictByStop' in str(routers[2])):
+	elif ('predictByStop' in str(routers[3])):
 		query_points = ["predictions&a=","&r=","&s="];
-		for i in range(3,len(routers),1):
-			query_url += str(query_points[i-3]) + str(routers[i]);
+		for i in range(4,len(routers),1):
+			query_url += str(query_points[i-4]) + str(routers[i]);
 		query_url += shortTitles;
 		
 	
-	elif ('predictionsForMultiStops' in str(routers[2])):
+	elif ('predictionsForMultiStops' in str(routers[3])):
 		query_points = ["predictionsForMultiStops&a=","&stops="];
-		query_url += str(query_points[0]) + str(routers[3]);
-		for i in range(4,len(routers),1):
+		query_url += str(query_points[0]) + str(routers[4]);
+		for i in range(5,len(routers),1):
 			query_url += str(query_points[1]) + str(routers[i]);
 		query_url += shortTitles;
 	
-	elif ('schedule' in str(routers[2])):
+	elif ('schedule' in str(routers[3])):
 		query_points = ["schedule&a=","&r="];
-		for i in range(3,len(routers),1):
-			query_url += str(query_points[i-3]) + str(routers[i]);
+		for i in range(4,len(routers),1):
+			query_url += str(query_points[i-4]) + str(routers[i]);
 		
 	
-	elif ('vehicleLocations' in str(routers[2])):
+	elif ('vehicleLocations' in str(routers[3])):
 		query_points = ["vehicleLocations&a=","&r=","&t="];
-		for i in range(3,len(routers),1):
-			query_url += str(query_points[i-3]) + str(routers[i]);
+		for i in range(4,len(routers),1):
+			query_url += str(query_points[i-4]) + str(routers[i]);
 
+	elif ('messages' in str(routers[3])):
+		query_points = ["messages&a=","&r="];
+		query_url += str(query_points[0]) + str(routers[4]);
+		for i in range(5,len(routers),1):
+			query_url += str(query_points[1]) + str(routers[i]);
+				
 	else:
 		raise Exception;
 
