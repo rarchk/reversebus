@@ -16,6 +16,7 @@ import json;
 import epollServer as epoll;
 import time;
 import stats;
+import redis;
     
 
 def parseconfig(configure_options):
@@ -32,22 +33,27 @@ def xml_to_json(response):
 def request_handler(epollContext,parameters):
 	startTime = time.time();
 	request,host,port = epollContext;
-	configDict = parameters[0];
+	configDict,pool = parameters;
 	
 	try:
 		route,query_url = get_http_route(request,configDict);
+		redis_conn = redis.Redis(connection_pool=pool)
+		
 		if (query_url == ""):
 			json_response = __help_response__;
 
 		elif (query_url == "stats"):
 			json_response = stats.show();
-		else:		
-			xml_response = requests.get(query_url);
-			json_response =  xml_to_json(xml_response.text);
+		else:
+			json_response = redis_conn.get(route);
+			if(json_response == None):
+				xml_response = requests.get(query_url);
+				json_response =  xml_to_json(xml_response.text);
+				redis_conn.set(route,str(json_response));
 
 		stats.update(time.time() - startTime,route,configDict);	
 
-		return str(time.time() - startTime) + "\n" + query_url + "\n" + json_response;
+		return str(time.time() - startTime) + "\n" + query_url + "\n" + str(json_response);
 	except Exception as e:
 		return ("Bad request: %s\n%s" % (request,__help_response__));
 	
@@ -138,8 +144,9 @@ if __name__ == '__main__':
 	args = configure_options.parse_args();
 
 	configDict = epoll.load_config(args.config);
+	pool = redis.ConnectionPool(host='localhost', port=configDict['redis_port'], db=0)
 	
-	thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict]);
+	thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict,pool]);
 	thisserver.run();
 	
 	
