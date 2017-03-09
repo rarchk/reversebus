@@ -34,7 +34,7 @@ class server():
 		self.logger = logging.getLogger("epollServer")
     		self.logger.setLevel(logging.INFO)	
 		
-		fh = logging.FileHandler("logs/"+self.configDict['log']);
+		fh = logging.FileHandler(self.configDict['log']);
 		formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s');
     		fh.setFormatter(formatter);
 
@@ -87,7 +87,10 @@ class server():
 	def handle_write_events(self,fileno):
 		try:
 			while(len(self.responses[fileno]) > 0):
-				self.connections[fileno].send(self.responses[fileno]);
+				httpStatus,contentType,response = self.responses[fileno]
+				self.connections[fileno].send(httpStatus);
+				self.connections[fileno].send(contentType);
+				self.connections[fileno].send(response);
 				self.responses[fileno] = "";
 				self.epoll.modify(fileno, select.EPOLLIN | select.EPOLLET);		# Registering for read event
 				break;

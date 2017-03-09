@@ -28,7 +28,7 @@ def parseconfig(configure_options):
 def init_logger(configDict):
 	logger.setLevel(logging.INFO)	
 
-	fh = logging.FileHandler("logs/"+configDict['log']);
+	fh = logging.FileHandler(configDict['log']);
 	formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s');
 	fh.setFormatter(formatter);
 
@@ -60,15 +60,15 @@ def request_handler(epollContext,parameters):
 				jsonResponse, _ = caching.toJson(response,"dict")	
 
 		elapsedTime = time.time() - startTime
-		if (queryUrl != "stats"):
+		if (queryUrl != "stats" or queryUrl != ""):
 			stats.update(elapsedTime,route,configDict);
 		
 		http_response =  str(elapsedTime) + "\n" + queryUrl + "\n" + str(jsonResponse);
-		return http_response;
+		return ['HTTP/1.0 200 OK\r\n',"Content-Type: application/json\r\n\r\n",http_response];
 
 	except Exception as e:
 		logger.error("Error in handling request: %s" % (e));
-		return __help_response__;
+		return ['HTTP/1.0 400 OK\r\n',"Content-Type: application/json\r\n\r\n",__help_response__];
 	
 def get_http_route(request,configDict):
 	route = ""
@@ -159,16 +159,13 @@ if __name__ == '__main__':
 	parseconfig(configure_options);
 	args = configure_options.parse_args();
 
-	try:
-		configDict = epoll.load_config(args.config);
-		init_logger(configDict);
-		
-		pool = redis.ConnectionPool(host='localhost', port=configDict['redis_port'], db=0)
 	
-		thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict,pool]);
-		thisserver.run();
-	finally:
-		del pool; 
-		 	
+	configDict = epoll.load_config(args.config);
+	init_logger(configDict);
+	pool = redis.ConnectionPool(host='localhost', port=configDict['redis_port'], db=0)
+
+	thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict,pool]);
+	thisserver.run();
+	 	
 	
 	
