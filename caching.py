@@ -20,7 +20,7 @@ def get_route(pool,route,timeout):
 		return -1;
 	else:
 		resp = pickle.loads(pickledDict);
-		if (time.time() - resp["createdAt"] > timeout):
+		if (time.time() - resp["createdAt"] < timeout):
 			return -1;
 		else:
 			return resp["data"];		
