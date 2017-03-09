@@ -15,14 +15,24 @@ import epollServer as epoll;
 import time;
 import stats;
 import redis;
-import caching; 
- 
-    
+import caching;
+import logging;  
+
+logger = logging.getLogger("reverseProxy")
 
 def parseconfig(configure_options):
 	configure_options.add_argument('-p','--port', help='Enter port number', default=8001);
 	configure_options.add_argument('--host', help='Enter host name', default='localhost');
 	configure_options.add_argument('-c','--config', help='Enter config file', default='config.json');
+
+def init_logger(configDict):
+	logger.setLevel(logging.INFO)	
+
+	fh = logging.FileHandler("logs/"+configDict['log']);
+	formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s');
+	fh.setFormatter(formatter);
+
+	logger.addHandler(fh);    
 
 
 def request_handler(epollContext,parameters):
@@ -57,7 +67,8 @@ def request_handler(epollContext,parameters):
 		return http_response;
 
 	except Exception as e:
-		return ("Bad request: %s\n%s" % (e,__help_response__));
+		logger.error("Error in handling request: %s" % (e));
+		return __help_response__;
 	
 def get_http_route(request,configDict):
 	route = ""
@@ -67,7 +78,10 @@ def get_http_route(request,configDict):
 		if ("GET" in header):
 			route = header.split(" ")[1];
 			break;
-	routers = route.split("/");
+	try:		
+		routers = route.split("/");
+	except:
+		logger.error("Not a get request from client");	
 
 	if (route == "/"):
 		return [route,""];
@@ -135,20 +149,26 @@ def get_http_route(request,configDict):
 			queryUrl += str(query_points[1]) + str(routers[i]);
 				
 	else:
+		logger.error("API request '%s' not recognized" % str(route))
 		raise Exception;
 
 	return [route,queryUrl];				
 			   
-
 if __name__ == '__main__':
 	configure_options = argparse.ArgumentParser(description = __description__);
 	parseconfig(configure_options);
 	args = configure_options.parse_args();
 
-	configDict = epoll.load_config(args.config);
-	pool = redis.ConnectionPool(host='localhost', port=configDict['redis_port'], db=0)
+	try:
+		configDict = epoll.load_config(args.config);
+		init_logger(configDict);
+		
+		pool = redis.ConnectionPool(host='localhost', port=configDict['redis_port'], db=0)
 	
-	thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict,pool]);
-	thisserver.run();
+		thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict,pool]);
+		thisserver.run();
+	finally:
+		del pool; 
+		 	
 	
 	

@@ -4,6 +4,7 @@
     "mongodb_port": 27017,
     "redis": 1,
     "redis_port": 6379,
-    "redis_timeout": 600,
+    "redis_timeout": 120,
+    "log": "app.log",
     "slow_requests_threshold": 1.0
 } 

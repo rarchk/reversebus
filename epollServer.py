@@ -2,6 +2,7 @@ import socket;
 import select;
 import sys;
 import json;
+import logging; 
 
 def load_config(path):
 	try:
@@ -18,7 +19,8 @@ class server():
 		# Registering configuration settings and request handler 
 		self.configDict = load_config("epollConfig.json");
 		self.request_handler = request_handler;
-		self.parameters = parameters; 
+		self.parameters = parameters;
+		  
 
 		self.servSock = socket.socket( socket.AF_INET, socket.SOCK_STREAM );
 		self.servSock.getsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); 
@@ -28,6 +30,15 @@ class server():
 		
 		if (self.configDict['tcp_nagle']):  
 			self.servSock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1);
+
+		self.logger = logging.getLogger("epollServer")
+    		self.logger.setLevel(logging.INFO)	
+		
+		fh = logging.FileHandler("logs/"+self.configDict['log']);
+		formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s');
+    		fh.setFormatter(formatter);
+
+    		self.logger.addHandler(fh);
 		
 		# Intializing client dicts
 		self.connections = {}; 
@@ -38,7 +49,7 @@ class server():
 		# Creating Epoll for future read events
 		self.epoll.register(self.servSock.fileno(), select.EPOLLIN | select.EPOLLET);
 
-		print ('NextBus Reverse Proxy[%s:%d] started' % (host,port));
+		self.logger.info('NextBus Reverse Proxy[%s:%d] started' % (host,port));
 
 	def accept_connection(self):
 		try:
@@ -48,7 +59,7 @@ class server():
 					self.epoll.register(clsock.fileno(), select.EPOLLIN | select.EPOLLET);
 					self.connections[clsock.fileno()] = clsock;
 					self.responses[clsock.fileno()] = "";
-					print ('<connect> %d<-%d' % (self.servSock.fileno(),clsock.fileno()));
+					self.logger.info('[%s:%d] connected' % (remote_host,remote_port));
 							
 		except socket.error:
 			pass;			
@@ -84,11 +95,12 @@ class server():
 			pass;
 		
 		if len(self.responses[fileno]) == 0:									# Client quits
+			(host,port) = self.connections[fileno].getpeername();
 			if (self.configDict['tcp_cork']):
 					self.connections[fileno].setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 0)
 			self.epoll.modify(fileno, select.EPOLLET);
 	   		self.connections[fileno].shutdown(socket.SHUT_RDWR)
-	   		print ('<disconnect> %d<-%d' % (self.servSock.fileno(),fileno));
+	   		self.logger.info('[%s:%d] disconnected' % (host,port));
 
 	def run(self):
 		try:
