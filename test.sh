@@ -14,7 +14,7 @@ declare -a endpoints=( "agencyList"
 
 for i in "${endpoints[@]}"
 do
-if curl -s --head  --request GET http://127.0.0.1:8080/api/$i | grep "xml\|json" > /dev/null; then
+if curl -s --head  --request GET http://127.0.0.1:8002/api/v1/$i | grep "xml\|json" > /dev/null; then
 echo "Endpoint "$i "is OK"
 else
 echo "Endpoint "$i "is NOT OK"

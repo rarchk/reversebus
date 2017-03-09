@@ -34,7 +34,6 @@ A simple reverse proxy for San Francisco's public transportation powered by Next
 	* This server can maintain keep-alive connections or short-lived connections.
 	* Threading does not work well with python because of `GIL interpreter lock` 
 
-
 **Configuration Settings**
 
 You can configure reverseProxy in  `config.json`
