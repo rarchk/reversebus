@@ -63,11 +63,11 @@ def request_handler(epollContext,parameters):
 		if (queryUrl != "stats" or queryUrl != ""):
 			stats.update(elapsedTime,route,configDict);
 		
-		http_response =  str(elapsedTime) + "\n" + queryUrl + "\n" + str(jsonResponse);
-		return ['HTTP/1.0 200 OK\r\n',"Content-Type: application/json\r\n\r\n",http_response];
+		logger.info("%s took %fs" %(route,elapsedTime));
+		return ['HTTP/1.0 200 OK\r\n',"Content-Type: application/json\r\n\r\n",str(jsonResponse)];
 
 	except Exception as e:
-		logger.error("Error in handling request: %s" % (e));
+		logger.error("Error in handling request:%s" % (e));
 		return ['HTTP/1.0 400 OK\r\n',"Content-Type: application/json\r\n\r\n",__help_response__];
 	
 def get_http_route(request,configDict):
@@ -87,72 +87,61 @@ def get_http_route(request,configDict):
 		return [route,""];
 
 	shortTitles=""
+	query_points=[];
 	if ('useShortTitles' == str(routers[-1])):
 		shortTitles += "&useShortTitles=True"
 		del routers[-1];
 
-	if ('agencyList' == str(routers[3])):
-		query_points = ["agencyList"];
-		queryUrl += str(query_points[0]);
+	if ('stats' == str(routers[3])):
+		queryUrl = "stats";
+		return [route,queryUrl];
+
+	elif ('agencyList' == str(routers[3])):
+		queryUrl += "agencyList";
+		return [route,queryUrl];
 
 	elif ('routeList' == str(routers[3])):
 		query_points = ["routeList&a="];
-		for i in range(4,len(routers),1):
-			queryUrl += str(query_points[i-4]) + str(routers[i]);
 		
-
-	elif ('stats' == str(routers[3])):
-		queryUrl = "stats";
-
 	elif ('routeConfig' == str(routers[3])):
 		query_points = ["routeConfig&a=","&r="];
-		for i in range(4,len(routers),1):
-			queryUrl += str(query_points[i-4]) + str(routers[i]);
-		queryUrl += shortTitles;
 		
-
 	elif ('predictByStopId' == str(routers[3])):
 		query_points = ["predictions&a=","&stopId=","&routeTag="];
-		for i in range(4,len(routers),1):
-			queryUrl += str(query_points[i-4]) + str(routers[i]);
-		queryUrl += shortTitles;	
 		
 	elif ('predictByStop' == str(routers[3])):
 		query_points = ["predictions&a=","&r=","&s="];
-		for i in range(4,len(routers),1):
-			queryUrl += str(query_points[i-4]) + str(routers[i]);
-		queryUrl += shortTitles;
 		
+	elif ('schedule' == str(routers[3])):
+		query_points = ["schedule&a=","&r="];
+		
+	elif ('vehicleLocations' == str(routers[3])):
+		query_points = ["vehicleLocations&a=","&r=","&t="];
+	
+	elif ('messages' == str(routers[3])):
+		query_points = ["messages&a=","&r="];
 	
 	elif ('predictionsForMultiStops' == str(routers[3])):
 		query_points = ["predictionsForMultiStops&a=","&stops="];
-		queryUrl += str(query_points[0]) + str(routers[4]);
-		for i in range(5,len(routers),1):
-			queryUrl += str(query_points[1]) + str(routers[i]);
-		queryUrl += shortTitles;
-	
-	elif ('schedule' == str(routers[3])):
-		query_points = ["schedule&a=","&r="];
-		for i in range(4,len(routers),1):
-			queryUrl += str(query_points[i-4]) + str(routers[i]);
-		
-	
-	elif ('vehicleLocations' == str(routers[3])):
-		query_points = ["vehicleLocations&a=","&r=","&t="];
-		for i in range(4,len(routers),1):
-			queryUrl += str(query_points[i-4]) + str(routers[i]);
-
-	elif ('messages' == str(routers[3])):
-		query_points = ["messages&a=","&r="];
-		queryUrl += str(query_points[0]) + str(routers[4]);
-		for i in range(5,len(routers),1):
-			queryUrl += str(query_points[1]) + str(routers[i]);
-				
+			
 	else:
 		logger.error("API request '%s' not recognized" % str(route))
 		raise Exception;
 
+	queryUrl += generate_url(4,query_points,routers) + shortTitles;	
+
 	return [route,queryUrl];				
+
+def generate_url(index,query_points,routers):
+	queryUrl = "";
+	last_query_point = ""
+	for i in range(index,len(routers),1):
+		try:
+			last_query_point = str(query_points[i-index]);
+		except:
+			pass;	
+		queryUrl += last_query_point + str(routers[i]);
+	return queryUrl;		
 			   
 if __name__ == '__main__':
 	configure_options = argparse.ArgumentParser(description = __description__);

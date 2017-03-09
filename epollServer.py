@@ -87,9 +87,9 @@ class server():
 	def handle_write_events(self,fileno):
 		try:
 			while(len(self.responses[fileno]) > 0):
-				httpStatus,contentType,response = self.responses[fileno]
+				httpStatus,headers,response = self.responses[fileno]
 				self.connections[fileno].send(httpStatus);
-				self.connections[fileno].send(contentType);
+				self.connections[fileno].send(headers);
 				self.connections[fileno].send(response);
 				self.responses[fileno] = "";
 				self.epoll.modify(fileno, select.EPOLLIN | select.EPOLLET);		# Registering for read event

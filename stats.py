@@ -1,6 +1,7 @@
 from pymongo import MongoClient;
 import pymongo;
- 
+
+  
 def update(elapsedTime,route,configDict):
 	try:
 		connection = MongoClient("localhost",27017);

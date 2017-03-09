@@ -8,13 +8,14 @@ declare -a endpoints=( "agencyList"
 		"predictByStopId/sf-muni/15184"
 		"predictByStop/sf-muni/E/5184"
 		"predictionsForMultiStops/sf-muni/N|6997"
+		"predictionsForMultiStops/sf-muni/N|6997/N|3909/useShortTitles"
 		"schedule/agencyList/E"
 		"vehicleLocations/sf-muni/E/0"
 		"stats" )
 
 for i in "${endpoints[@]}"
 do
-if curl -s --head  --request GET http://127.0.0.1:8002/api/v1/$i | grep "xml\|json" > /dev/null; then
+if curl -s --head  --request GET http://127.0.0.1:8003/api/v1/$i | grep "json" > /dev/null; then
 echo "Endpoint "$i "is OK"
 else
 echo "Endpoint "$i "is NOT OK"
