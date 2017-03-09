@@ -2,7 +2,7 @@
 	"target_url": "http://webservices.nextbus.com",
     "mongodb_address": "mymongo",
     "mongodb_port": 27017,
-    "redis_address": "redis",
+    "redis": 1,
     "redis_port": 6379,
     "redis_timeout": 600,
     "slow_requests_threshold": 1.0

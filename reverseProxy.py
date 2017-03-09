@@ -11,12 +11,12 @@ import os;
 import sys;
 import argparse;
 import requests;
-import xmltodict; 
-import json;
 import epollServer as epoll;
 import time;
 import stats;
 import redis;
+import caching; 
+ 
     
 
 def parseconfig(configure_options):
@@ -24,11 +24,6 @@ def parseconfig(configure_options):
 	configure_options.add_argument('--host', help='Enter host name', default='localhost');
 	configure_options.add_argument('-c','--config', help='Enter config file', default='config.json');
 
-def xml_to_json(response):
-	toDict = xmltodict.parse(response);
-	response = json.dumps(toDict,sort_keys = True, indent = 4, separators = (",",":") );
-	del toDict; 
-	return response;				
 
 def request_handler(epollContext,parameters):
 	startTime = time.time();
@@ -36,30 +31,37 @@ def request_handler(epollContext,parameters):
 	configDict,pool = parameters;
 	
 	try:
-		route,query_url = get_http_route(request,configDict);
-		redis_conn = redis.Redis(connection_pool=pool)
+		route,queryUrl = get_http_route(request,configDict);
 		
-		if (query_url == ""):
-			json_response = __help_response__;
+		
+		if (queryUrl == ""):
+			jsonResponse = __help_response__;
 
-		elif (query_url == "stats"):
-			json_response = stats.show();
+		elif (queryUrl == "stats"):
+			jsonResponse = stats.show();
 		else:
-			json_response = redis_conn.get(route);
-			if(json_response == None):
-				xml_response = requests.get(query_url);
-				json_response =  xml_to_json(xml_response.text);
-				redis_conn.set(route,str(json_response));
+			response = caching.get_route(pool,route,configDict['redis_timeout'])	
+			if(response == -1):
+				xmlResponse = requests.get(queryUrl);
+				jsonResponse,dictResponse =  caching.toJson(xmlResponse.text,"xml");
+				caching.set_route(pool,route,dictResponse);
+				
+			else:
+				jsonResponse, _ = caching.toJson(response,"dict")	
 
-		stats.update(time.time() - startTime,route,configDict);	
+		elapsedTime = time.time() - startTime
+		if (queryUrl != "stats"):
+			stats.update(elapsedTime,route,configDict);
+		
+		http_response =  str(elapsedTime) + "\n" + queryUrl + "\n" + str(jsonResponse);
+		return http_response;
 
-		return str(time.time() - startTime) + "\n" + query_url + "\n" + str(json_response);
 	except Exception as e:
-		return ("Bad request: %s\n%s" % (request,__help_response__));
+		return ("Bad request: %s\n%s" % (e,__help_response__));
 	
 def get_http_route(request,configDict):
 	route = ""
-	query_url = configDict['target_url'] + "/service/publicXMLFeed?command="
+	queryUrl = configDict['target_url'] + "/service/publicXMLFeed?command="
 	
 	for header in request.split("\r\n"):
 		if ("GET" in header):
@@ -71,71 +73,71 @@ def get_http_route(request,configDict):
 		return [route,""];
 
 	shortTitles=""
-	if ('useShortTitles' in str(routers[-1])):
+	if ('useShortTitles' == str(routers[-1])):
 		shortTitles += "&useShortTitles=True"
 		del routers[-1];
 
-	if ('agencyList' in str(routers[3])):
+	if ('agencyList' == str(routers[3])):
 		query_points = ["agencyList"];
-		query_url += str(query_points[0]);
+		queryUrl += str(query_points[0]);
 
-	elif ('routeList' in str(routers[3])):
+	elif ('routeList' == str(routers[3])):
 		query_points = ["routeList&a="];
 		for i in range(4,len(routers),1):
-			query_url += str(query_points[i-4]) + str(routers[i]);
+			queryUrl += str(query_points[i-4]) + str(routers[i]);
 		
 
-	elif ('stats' in str(routers[3])):
-		query_url = "stats";
+	elif ('stats' == str(routers[3])):
+		queryUrl = "stats";
 
-	elif ('routeConfig' in str(routers[3])):
+	elif ('routeConfig' == str(routers[3])):
 		query_points = ["routeConfig&a=","&r="];
 		for i in range(4,len(routers),1):
-			query_url += str(query_points[i-4]) + str(routers[i]);
-		query_url += shortTitles;
+			queryUrl += str(query_points[i-4]) + str(routers[i]);
+		queryUrl += shortTitles;
 		
 
-	elif ('predictByStopId' in str(routers[3])):
+	elif ('predictByStopId' == str(routers[3])):
 		query_points = ["predictions&a=","&stopId=","&routeTag="];
 		for i in range(4,len(routers),1):
-			query_url += str(query_points[i-4]) + str(routers[i]);
-		query_url += shortTitles;	
+			queryUrl += str(query_points[i-4]) + str(routers[i]);
+		queryUrl += shortTitles;	
 		
-	elif ('predictByStop' in str(routers[3])):
+	elif ('predictByStop' == str(routers[3])):
 		query_points = ["predictions&a=","&r=","&s="];
 		for i in range(4,len(routers),1):
-			query_url += str(query_points[i-4]) + str(routers[i]);
-		query_url += shortTitles;
+			queryUrl += str(query_points[i-4]) + str(routers[i]);
+		queryUrl += shortTitles;
 		
 	
-	elif ('predictionsForMultiStops' in str(routers[3])):
+	elif ('predictionsForMultiStops' == str(routers[3])):
 		query_points = ["predictionsForMultiStops&a=","&stops="];
-		query_url += str(query_points[0]) + str(routers[4]);
+		queryUrl += str(query_points[0]) + str(routers[4]);
 		for i in range(5,len(routers),1):
-			query_url += str(query_points[1]) + str(routers[i]);
-		query_url += shortTitles;
+			queryUrl += str(query_points[1]) + str(routers[i]);
+		queryUrl += shortTitles;
 	
-	elif ('schedule' in str(routers[3])):
+	elif ('schedule' == str(routers[3])):
 		query_points = ["schedule&a=","&r="];
 		for i in range(4,len(routers),1):
-			query_url += str(query_points[i-4]) + str(routers[i]);
+			queryUrl += str(query_points[i-4]) + str(routers[i]);
 		
 	
-	elif ('vehicleLocations' in str(routers[3])):
+	elif ('vehicleLocations' == str(routers[3])):
 		query_points = ["vehicleLocations&a=","&r=","&t="];
 		for i in range(4,len(routers),1):
-			query_url += str(query_points[i-4]) + str(routers[i]);
+			queryUrl += str(query_points[i-4]) + str(routers[i]);
 
-	elif ('messages' in str(routers[3])):
+	elif ('messages' == str(routers[3])):
 		query_points = ["messages&a=","&r="];
-		query_url += str(query_points[0]) + str(routers[4]);
+		queryUrl += str(query_points[0]) + str(routers[4]);
 		for i in range(5,len(routers),1):
-			query_url += str(query_points[1]) + str(routers[i]);
+			queryUrl += str(query_points[1]) + str(routers[i]);
 				
 	else:
 		raise Exception;
 
-	return [route,query_url];				
+	return [route,queryUrl];				
 			   
 
 if __name__ == '__main__':
