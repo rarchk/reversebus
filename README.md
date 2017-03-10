@@ -3,9 +3,17 @@ NextBus Reverse Proxy
 
 A simple reverse proxy for San Francisco's public transportation powered by NextBus's XML feed.   
 ## Usage
+### Run locally 
+
+```bash
+# run reverseProxy server
+$> ./run.sh
+# test for common things 
+$> ./test.sh
+```
+
+### One Click Demo
 1. [Install docker-compose](https://docs.docker.com/v1.5/compose/install/)
-	curl -L https://github.com/docker/compose/releases/download/1.1.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
-	chmod +x /usr/local/bin/docker-compose 
 2. docker-compose up 
 3. [curl localhost:8001/api/v1/agencyList](#examples) 
 
