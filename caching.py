@@ -25,7 +25,7 @@ def set_route(pool,route,dictResponse):
 	pickle_dict = pickle.dumps(resp);
 	conn.set(route,pickle_dict);
 
-def reset():
+def reset(pool):
 	conn = redis.Redis(connection_pool=pool)
 	for i in conn.keys():
 		conn.delete(i); 	

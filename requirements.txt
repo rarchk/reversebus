@@ -1,4 +1,4 @@
 redis
 requests 
 xmltodict
-pymongo=3.4
+pymongo

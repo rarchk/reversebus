@@ -2,13 +2,33 @@ import socket;
 import select;
 import logging;
 import utilities;
+import sys;
+
+CONFIG_FILE = 'epollConfig.json'
+
+''' Check if configuration file is properly set'''
+def checkConfig(configDict,logger):
+	tcp_nagle = (type(configDict['tcp_nagle']) == bool);
+	tcp_cork = (type(configDict['tcp_cork']) == bool);
+	listen_connections = (type(configDict['listen_connections']) == int);
+	log = (type(configDict['log']) == str);
+	
+	if not ( tcp_nagle and tcp_cork and listen_connections and log):
+		logger.error('Configuration file %s is not correctly configured' % CONFIG_FILE);
+		sys.exit(-1);
 
 
 class server():
 	def __init__(self,port,host,request_handler,parameters):
 
-		# Registering configuration settings and request handler 
-		self.configDict = utilities.loadConfig("epollConfig.json");
+		# Registering configuration settings and request handler, logger
+		self.configDict = utilities.loadConfig(CONFIG_FILE);
+
+		self.logger = logging.getLogger();
+    		utilities.initLogger(self.logger,self.configDict); 
+		
+		checkConfig(self.configDict,self.logger);
+		
 		self.request_handler = request_handler;
 		self.parameters = parameters;
 		  
@@ -22,8 +42,7 @@ class server():
 		if (self.configDict['tcp_nagle']):  
 			self.servSock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1);
 
-		self.logger = logging.getLogger("epollServer")
-    		utilities.initLogger(self.logger,self.configDict);
+		
 		
 		# Intializing client dicts
 		self.connections = {}; 

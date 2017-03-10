@@ -1,6 +1,6 @@
 {
-	"tcp_nagle": 1,
-	"tcp_cork": 0,
+	"tcp_nagle": true,
+	"tcp_cork": false,
 	"listen_connections":50,
 	"log":"epoll.log"
 } 

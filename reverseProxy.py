@@ -19,20 +19,39 @@ import caching;
 import utilities;  
 import epollServer as epoll;
 
-logger = logging.getLogger("reverseProxy")
+logger = logging.getLogger()
+CONFIG_FILE = ''
 
-def parseconfig(configure_options):
+''' Handles cmdline argumets'''
+def parseConfig(configure_options):
 	configure_options.add_argument('-p','--port', help='Enter port number', default=8001);
 	configure_options.add_argument('--host', help='Enter host name', default='localhost');
 	configure_options.add_argument('-c','--config', help='Enter config file', default='config.json');
 
-def request_handler(epollContext,parameters):
+''' Check if configuration file is properly set'''
+def checkConfig(configDict,logger):
+	target_url = (type(configDict['target_url']) == str);
+	mongodb_address = (type(configDict['mongodb_address']) == str);
+	redis_address = (type(configDict['redis_address']) == str);
+	log = (type(configDict['log']) == str);
+	redis_port = (type(configDict['redis_port']) == int);
+	mongodb_port = (type(configDict['mongodb_port']) == int);
+	redis_timeout = (type(configDict['redis_timeout']) == int);
+	slow_requests_threshold = (type(configDict['slow_requests_threshold']) == float);
+	
+	if not (target_url and mongodb_address and redis_address and log and\
+	 redis_port and mongodb_port and redis_timeout and slow_requests_threshold):
+		logger.error('Configuration file %s is not correctly configured' % CONFIG_FILE);
+		sys.exit(-1);
+
+
+def requestHandler(epollContext,parameters):
 	startTime = time.time();
 	request,host,port = epollContext;
 	configDict,pool = parameters;
 	
 	try:
-		route,queryUrl = get_http_route(request,configDict);
+		route,queryUrl = getRoute(request,configDict);
 		
 		
 		if (queryUrl == ""):
@@ -61,7 +80,7 @@ def request_handler(epollContext,parameters):
 		logger.error("Error in handling request:%s" % (e));
 		return ['HTTP/1.0 400 OK\r\n',"Content-Type: application/json\r\n\r\n",__help_response__];
 	
-def get_http_route(request,configDict):
+def getRoute(request,configDict):
 	route = ""
 	queryUrl = configDict['target_url'] + "/service/publicXMLFeed?command="
 	
@@ -119,11 +138,11 @@ def get_http_route(request,configDict):
 		logger.error("API request '%s' not recognized" % str(route))
 		raise Exception;
 
-	queryUrl += generate_url(4,query_points,routers) + shortTitles;	
+	queryUrl += generateUrl(4,query_points,routers) + shortTitles;	
 
 	return [route,queryUrl];				
 
-def generate_url(index,query_points,routers):
+def generateUrl(index,query_points,routers):
 	queryUrl = "";
 	last_query_point = ""
 	for i in range(index,len(routers),1):
@@ -136,15 +155,16 @@ def generate_url(index,query_points,routers):
 			   
 if __name__ == '__main__':
 	configure_options = argparse.ArgumentParser(description = __description__);
-	parseconfig(configure_options);
+	parseConfig(configure_options);
 	args = configure_options.parse_args();
 
-	
-	configDict = utilities.loadConfig(args.config);
+	CONFIG_FILE = args.config;
+	configDict = utilities.loadConfig(CONFIG_FILE);
 	utilities.initLogger(logger,configDict);
+	checkConfig(configDict,logger)
 	pool = caching.init(configDict);
 
-	thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict,pool]);
+	thisserver = epoll.server(int(args.port),args.host,requestHandler,[configDict,pool]);
 	thisserver.run();
 	 	
 	

@@ -3,7 +3,9 @@ NextBus Reverse Proxy
 
 A simple reverse proxy for San Francisco's public transportation powered by NextBus's XML feed.   
 ## Usage
-1. [Install docker-compose](https://docs.docker.com/v1.5/compose/install/) 
+1. [Install docker-compose](https://docs.docker.com/v1.5/compose/install/)
+	curl -L https://github.com/docker/compose/releases/download/1.1.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+	chmod +x /usr/local/bin/docker-compose 
 2. docker-compose up 
 3. [curl localhost:8001/api/v1/agencyList](#examples) 
 
@@ -32,7 +34,8 @@ A simple reverse proxy for San Francisco's public transportation powered by Next
 3. A single threaded edge triggered epoll framework has been used to handle requests
 	* At Application level, only request_handler has to be implemented by user.
 	* This server can maintain keep-alive connections or short-lived connections.
-	* Threading does not work well with python because of `GIL interpreter lock` 
+	* Threading does not work well with python because of `GIL interpreter lock`
+	* For further documentation and limitations, go to the [references](#references)  
 
 **Configuration Settings**
 
@@ -97,3 +100,4 @@ The application address is, by default, `127.0.0.1:8001/`. A brief description o
 
 ## References 
 - [Next Bus XML Feed Documentation](http://www.nextbus.com/xmlFeedDocs/NextBusXMLFeed.pdf)
+- [Function Reference](docs/functionReference.md)
