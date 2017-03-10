@@ -30,10 +30,10 @@ def parseConfig(configure_options):
 
 ''' Check if configuration file is properly set'''
 def checkConfig(configDict,logger):
-	target_url = (type(configDict['target_url']) == str);
-	mongodb_address = (type(configDict['mongodb_address']) == str);
-	redis_address = (type(configDict['redis_address']) == str);
-	log = (type(configDict['log']) == str);
+	target_url = (type(configDict['target_url']) == unicode);
+	mongodb_address = (type(configDict['mongodb_address']) == unicode);
+	redis_address = (type(configDict['redis_address']) == unicode);
+	log = (type(configDict['log']) == unicode);
 	redis_port = (type(configDict['redis_port']) == int);
 	mongodb_port = (type(configDict['mongodb_port']) == int);
 	redis_timeout = (type(configDict['redis_timeout']) == int);
@@ -98,40 +98,40 @@ def getRoute(request,configDict):
 
 	shortTitles=""
 	query_points=[];
-	if ('useShortTitles' == str(routers[-1])):
+	if ('useShortTitles' == unicode(routers[-1])):
 		shortTitles += "&useShortTitles=True"
 		del routers[-1];
 
-	if ('stats' == str(routers[3])):
+	if ('stats' == unicode(routers[3])):
 		queryUrl = "stats";
 		return [route,queryUrl];
 
-	elif ('agencyList' == str(routers[3])):
+	elif ('agencyList' == unicode(routers[3])):
 		queryUrl += "agencyList";
 		return [route,queryUrl];
 
-	elif ('routeList' == str(routers[3])):
+	elif ('routeList' == unicode(routers[3])):
 		query_points = ["routeList&a="];
 		
-	elif ('routeConfig' == str(routers[3])):
+	elif ('routeConfig' == unicode(routers[3])):
 		query_points = ["routeConfig&a=","&r="];
 		
-	elif ('predictByStopId' == str(routers[3])):
+	elif ('predictByStopId' == unicode(routers[3])):
 		query_points = ["predictions&a=","&stopId=","&routeTag="];
 		
-	elif ('predictByStop' == str(routers[3])):
+	elif ('predictByStop' == unicode(routers[3])):
 		query_points = ["predictions&a=","&r=","&s="];
 		
-	elif ('schedule' == str(routers[3])):
+	elif ('schedule' == unicode(routers[3])):
 		query_points = ["schedule&a=","&r="];
 		
-	elif ('vehicleLocations' == str(routers[3])):
+	elif ('vehicleLocations' == unicode(routers[3])):
 		query_points = ["vehicleLocations&a=","&r=","&t="];
 	
-	elif ('messages' == str(routers[3])):
+	elif ('messages' == unicode(routers[3])):
 		query_points = ["messages&a=","&r="];
 	
-	elif ('predictionsForMultiStops' == str(routers[3])):
+	elif ('predictionsForMultiStops' == unicode(routers[3])):
 		query_points = ["predictionsForMultiStops&a=","&stops="];
 			
 	else:

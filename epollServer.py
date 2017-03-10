@@ -11,7 +11,7 @@ def checkConfig(configDict,logger):
 	tcp_nagle = (type(configDict['tcp_nagle']) == bool);
 	tcp_cork = (type(configDict['tcp_cork']) == bool);
 	listen_connections = (type(configDict['listen_connections']) == int);
-	log = (type(configDict['log']) == str);
+	log = (type(configDict['log']) == unicode);
 	
 	if not ( tcp_nagle and tcp_cork and listen_connections and log):
 		logger.error('Configuration file %s is not correctly configured' % CONFIG_FILE);
