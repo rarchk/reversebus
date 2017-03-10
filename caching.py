@@ -1,18 +1,11 @@
 import redis;
 import pickle;
-import json; 
-import xmltodict;
 import time; 
+
+def init(configDict):
+	pool = redis.ConnectionPool(host='localhost', port=configDict['redis_port'], db=0);
+	return pool; 
  
- 
-def toJson(response,__type__):
-	toDict = dict();
-	if __type__ == "xml":
-		toDict = xmltodict.parse(response);
-	elif __type__ == "dict":
-		toDict = response;
-	response = json.dumps(toDict,sort_keys = True, indent = 4, separators = (",",":") );		
-	return [response,toDict];				
 
 def get_route(pool,route,timeout):
 	conn = redis.Redis(connection_pool=pool)

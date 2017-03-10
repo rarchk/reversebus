@@ -1,23 +1,14 @@
 import socket;
 import select;
-import sys;
-import json;
-import logging; 
+import logging;
+import utilities;
 
-def load_config(path):
-	try:
-		with open(path,'r') as f:
-			configDict = json.loads( f.read() );
-	except Exception as e:
-		print ("Bad configuration file name %s %s" % (path,e));
-		sys.exit(-1);		
-	return configDict;
 
 class server():
 	def __init__(self,port,host,request_handler,parameters):
 
 		# Registering configuration settings and request handler 
-		self.configDict = load_config("epollConfig.json");
+		self.configDict = utilities.loadConfig("epollConfig.json");
 		self.request_handler = request_handler;
 		self.parameters = parameters;
 		  
@@ -32,13 +23,7 @@ class server():
 			self.servSock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1);
 
 		self.logger = logging.getLogger("epollServer")
-    		self.logger.setLevel(logging.INFO)	
-		
-		fh = logging.FileHandler(self.configDict['log']);
-		formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s');
-    		fh.setFormatter(formatter);
-
-    		self.logger.addHandler(fh);
+    		utilities.initLogger(self.logger,self.configDict);
 		
 		# Intializing client dicts
 		self.connections = {}; 

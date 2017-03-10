@@ -11,12 +11,13 @@ import os;
 import sys;
 import argparse;
 import requests;
-import epollServer as epoll;
 import time;
+import logging;
+
 import stats;
-import redis;
 import caching;
-import logging;  
+import utilities;  
+import epollServer as epoll;
 
 logger = logging.getLogger("reverseProxy")
 
@@ -24,16 +25,6 @@ def parseconfig(configure_options):
 	configure_options.add_argument('-p','--port', help='Enter port number', default=8001);
 	configure_options.add_argument('--host', help='Enter host name', default='localhost');
 	configure_options.add_argument('-c','--config', help='Enter config file', default='config.json');
-
-def init_logger(configDict):
-	logger.setLevel(logging.INFO)	
-
-	fh = logging.FileHandler(configDict['log']);
-	formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s');
-	fh.setFormatter(formatter);
-
-	logger.addHandler(fh);    
-
 
 def request_handler(epollContext,parameters):
 	startTime = time.time();
@@ -53,11 +44,11 @@ def request_handler(epollContext,parameters):
 			response = caching.get_route(pool,route,configDict['redis_timeout'])	
 			if(response == -1):
 				xmlResponse = requests.get(queryUrl);
-				jsonResponse,dictResponse =  caching.toJson(xmlResponse.text,"xml");
+				jsonResponse,dictResponse =  utilities.toJson(xmlResponse.text,"xml");
 				caching.set_route(pool,route,dictResponse);
 				
 			else:
-				jsonResponse, _ = caching.toJson(response,"dict")	
+				jsonResponse, _ = utilities.toJson(response,"dict")	
 
 		elapsedTime = time.time() - startTime
 		if (queryUrl != "stats" or queryUrl != ""):
@@ -149,9 +140,9 @@ if __name__ == '__main__':
 	args = configure_options.parse_args();
 
 	
-	configDict = epoll.load_config(args.config);
-	init_logger(configDict);
-	pool = redis.ConnectionPool(host='localhost', port=configDict['redis_port'], db=0)
+	configDict = utilities.loadConfig(args.config);
+	utilities.initLogger(logger,configDict);
+	pool = caching.init(configDict);
 
 	thisserver = epoll.server(int(args.port),args.host,request_handler,[configDict,pool]);
 	thisserver.run();
