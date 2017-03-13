@@ -8,6 +8,11 @@ import utilities
 
 CONFIG_FILE = 'epollConfig.json'
 
+HTTP_RESPONSE = {
+	400: 'HTTP/1.0 400 OK\r\n',
+	200: 'HTTP/1.0 200 OK\r\n'
+}
+
 ''' Check if configuration file is properly set'''
 
 
@@ -91,9 +96,9 @@ class Server():
 	def handle_write_events(self, fileno):
 		try:
 			while(len(self.responses[fileno]) > 0):
-				httpStatus, headers, response = self.responses[fileno]
-				self.connections[fileno].send(httpStatus)
-				self.connections[fileno].send(headers)
+				http_status, http_headers, response = self.responses[fileno]
+				self.connections[fileno].send(HTTP_RESPONSE[http_status])
+				self.connections[fileno].send(http_headers)
 				self.connections[fileno].send(response)
 				self.responses[fileno] = ""
 				self.epoll.modify(fileno, select.EPOLLIN | select.EPOLLET)		# Registering for read event
