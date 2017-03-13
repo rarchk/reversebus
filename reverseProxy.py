@@ -1,171 +1,172 @@
-#!/usr/bin/env python
+import argparse
+import logging
+import sys
+import time
+
+import caching
+
+import epollServer as epoll
+
+import requests
+
+import stats
+
+import utilities
+
 __author__ = 'Ronak Kogta<rixor786@gmail.com>'
-__description__ = \
-''' Edge triggered Reverse proxy broker '''
-__help_response__ = \
-'''Reverse proxy for NextBus API.\r\n 
+__description__ = ''' Edge triggered Reverse proxy broker '''
+__help_response__ = '''Reverse proxy for NextBus API.\r\n 
 We do not have appropriate response for above request. 
 Please refer https://github.com/rarchk/reversebus#examples'''
-
-import os;
-import sys;
-import argparse;
-import requests;
-import time;
-import logging;
-
-import stats;
-import caching;
-import utilities;  
-import epollServer as epoll;
 
 logger = logging.getLogger()
 CONFIG_FILE = ''
 
 ''' Handles cmdline argumets'''
+
+
 def parseConfig(configure_options):
-	configure_options.add_argument('-p','--port', help='Enter port number', default=8001);
-	configure_options.add_argument('--host', help='Enter host name', default='localhost');
-	configure_options.add_argument('-c','--config', help='Enter config file', default='config.json');
+	configure_options.add_argument('-p', '--port', help='Enter port number', default=8001)
+	configure_options.add_argument('--host', help='Enter host name', default='localhost')
+	configure_options.add_argument('-c', '--config', help='Enter config file', default='config.json')
 
 ''' Check if configuration file is properly set'''
-def checkConfig(configDict,logger):
-	target_url = (type(configDict['target_url']) == unicode);
-	mongodb_address = (type(configDict['mongodb_address']) == unicode);
-	redis_address = (type(configDict['redis_address']) == unicode);
-	log = (type(configDict['log']) == unicode);
-	redis_port = (type(configDict['redis_port']) == int);
-	mongodb_port = (type(configDict['mongodb_port']) == int);
-	redis_timeout = (type(configDict['redis_timeout']) == int);
-	slow_requests_threshold = (type(configDict['slow_requests_threshold']) == float);
+
+
+def check_config(config_dict, logger):
+	target_url = (type(config_dict['target_url']) == unicode)
+	mongodb_address = (type(config_dict['mongodb_address']) == unicode)
+	redis_address = (type(config_dict['redis_address']) == unicode)
+	log = (type(config_dict['log']) == unicode)
+	redis_port = (type(config_dict['redis_port']) == int)
+	mongodb_port = (type(config_dict['mongodb_port']) == int)
+	redis_timeout = (type(config_dict['redis_timeout']) == int)
+	slow_requests_threshold = (type(config_dict['slow_requests_threshold']) == float)
 	
 	if not (target_url and mongodb_address and redis_address and log and\
 	 redis_port and mongodb_port and redis_timeout and slow_requests_threshold):
-		logger.error('Configuration file %s is not correctly configured' % CONFIG_FILE);
-		sys.exit(-1);
+		logger.error('Configuration file %s is not correctly configured' % CONFIG_FILE)
+		sys.exit(-1)
 
 
-def requestHandler(epollContext,parameters):
-	startTime = time.time();
-	request,host,port = epollContext;
-	configDict,pool = parameters;
+def request_handler(epoll_context, parameters):
+	startTime = time.time()
+	request, host, port = epoll_context
+	config_dict, pool = parameters
 	
 	try:
-		route,queryUrl = getRoute(request,configDict);
+		route, query_url = getRoute(request, config_dict)
 		
 		
-		if (queryUrl == ""):
-			jsonResponse = __help_response__;
+		if (query_url == ""):
+			json_response = __help_response__
 
-		elif (queryUrl == "stats"):
-			jsonResponse = stats.show();
+		elif (query_url == "stats"):
+			json_response = stats.show()
 		else:
-			response = caching.get_route(pool,route,configDict['redis_timeout'])	
+			response = caching.get_route(pool, route, config_dict['redis_timeout'])
 			if(response == -1):
-				xmlResponse = requests.get(queryUrl);
-				jsonResponse,dictResponse =  utilities.toJson(xmlResponse.text,"xml");
-				caching.set_route(pool,route,dictResponse);
+				xml_response = requests.get(query_url)
+				json_response, dict_response = utilities.to_json(xml_response.text, "xml")
+				caching.set_route(pool, route, dict_response)
 				
 			else:
-				jsonResponse, _ = utilities.toJson(response,"dict")	
+				json_response, _ = utilities.to_json(response,"dict")
 
-		elapsedTime = time.time() - startTime
-		if (queryUrl != "stats" or queryUrl != ""):
-			stats.update(elapsedTime,route,configDict);
+		elapsed_time = time.time() - startTime
+		if (query_url != "stats" or query_url != ""):
+			stats.update(elapsed_time, route, config_dict)
 		
-		logger.info("%s took %fs" %(route,elapsedTime));
-		return ['HTTP/1.0 200 OK\r\n',"Content-Type: application/json\r\n\r\n",str(jsonResponse)];
+		logger.info("%s took %fs" % (route, elapsed_time))
+		return ['HTTP/1.0 200 OK\r\n', "Content-Type: application/json\r\n\r\n", str(json_response)]
 
 	except Exception as e:
-		logger.error("Error in handling request:%s" % (e));
-		return ['HTTP/1.0 400 OK\r\n',"Content-Type: application/json\r\n\r\n",__help_response__];
+		logger.error("Error in handling request:%s" % (e))
+		return ['HTTP/1.0 400 OK\r\n', "Content-Type: application/json\r\n\r\n", __help_response__]
 	
-def getRoute(request,configDict):
+def getRoute(request,config_dict):
 	route = ""
-	queryUrl = configDict['target_url'] + "/service/publicXMLFeed?command="
+	query_url = config_dict['target_url'] + "/service/publicXMLFeed?command="
 	
 	for header in request.split("\r\n"):
 		if ("GET" in header):
-			route = header.split(" ")[1];
-			break;
+			route = header.split(" ")[1]
+			break
 	try:		
-		routers = route.split("/");
+		routers = route.split("/")
 	except:
-		logger.error("Not a get request from client");	
+		logger.error("Not a get request from client")	
 
 	if (route == "/"):
-		return [route,""];
+		return [route, ""]
 
-	shortTitles=""
-	query_points=[];
+	shortTitles= ""
+	query_points= []
 	if ('useShortTitles' == unicode(routers[-1])):
 		shortTitles += "&useShortTitles=True"
-		del routers[-1];
+		del routers[-1]
 
 	if ('stats' == unicode(routers[3])):
-		queryUrl = "stats";
-		return [route,queryUrl];
+		query_url = "stats"
+		return [route, query_url]
 
 	elif ('agencyList' == unicode(routers[3])):
-		queryUrl += "agencyList";
-		return [route,queryUrl];
+		query_url += "agencyList"
+		return [route, query_url]
 
 	elif ('routeList' == unicode(routers[3])):
-		query_points = ["routeList&a="];
+		query_points = ["routeList&a="]
 		
 	elif ('routeConfig' == unicode(routers[3])):
-		query_points = ["routeConfig&a=","&r="];
+		query_points = ["routeConfig&a=", "&r="]
 		
 	elif ('predictByStopId' == unicode(routers[3])):
-		query_points = ["predictions&a=","&stopId=","&routeTag="];
+		query_points = ["predictions&a=", "&stopId=", "&routeTag="]
 		
 	elif ('predictByStop' == unicode(routers[3])):
-		query_points = ["predictions&a=","&r=","&s="];
+		query_points = ["predictions&a=", "&r=", "&s="]
 		
 	elif ('schedule' == unicode(routers[3])):
-		query_points = ["schedule&a=","&r="];
+		query_points = ["schedule&a=", "&r="]
 		
 	elif ('vehicleLocations' == unicode(routers[3])):
-		query_points = ["vehicleLocations&a=","&r=","&t="];
+		query_points = ["vehicleLocations&a=", "&r=", "&t="]
 	
 	elif ('messages' == unicode(routers[3])):
-		query_points = ["messages&a=","&r="];
+		query_points = ["messages&a=", "&r="]
 	
 	elif ('predictionsForMultiStops' == unicode(routers[3])):
-		query_points = ["predictionsForMultiStops&a=","&stops="];
+		query_points = ["predictionsForMultiStops&a=", "&stops="]
 			
 	else:
 		logger.error("API request '%s' not recognized" % str(route))
-		raise Exception;
+		raise Exception
 
-	queryUrl += generateUrl(4,query_points,routers) + shortTitles;	
+	query_url += generateUrl(4, query_points, routers) + shortTitles
 
-	return [route,queryUrl];				
+	return [route, query_url]
 
-def generateUrl(index,query_points,routers):
-	queryUrl = "";
+def generateUrl(index, query_points, routers):
+	query_url = ""
 	last_query_point = ""
-	for i in range(index,len(routers),1):
+	for i in range(index, len(routers), 1):
 		try:
-			last_query_point = str(query_points[i-index]);
+			last_query_point = str(query_points[i - index])
 		except:
-			pass;	
-		queryUrl += last_query_point + str(routers[i]);
-	return queryUrl;		
-			   
+			pass
+		query_url += last_query_point + str(routers[i])
+	return query_url
+
 if __name__ == '__main__':
-	configure_options = argparse.ArgumentParser(description = __description__);
-	parseConfig(configure_options);
-	args = configure_options.parse_args();
+	configure_options = argparse.ArgumentParser(description=__description__)
+	parseConfig(configure_options)
+	args = configure_options.parse_args()
 
-	CONFIG_FILE = args.config;
-	configDict = utilities.loadConfig(CONFIG_FILE);
-	utilities.initLogger(logger,configDict);
-	checkConfig(configDict,logger)
-	pool = caching.init(configDict);
+	CONFIG_FILE = args.config
+	config_dict = utilities.load_config(CONFIG_FILE)
+	utilities.init_logger(logger, config_dict)
+	check_config(config_dict, logger)
+	pool = caching.init(config_dict)
 
-	thisserver = epoll.server(int(args.port),args.host,requestHandler,[configDict,pool]);
-	thisserver.run();
-	 	
-	
-	
+	thisserver = epoll.Server(int(args.port), args.host, request_handler, [config_dict,pool])
+	thisserver.run()
