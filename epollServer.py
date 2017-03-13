@@ -114,6 +114,12 @@ class Server():
 	   		self.connections[fileno].shutdown(socket.SHUT_RDWR)
 	   		self.logger.info('[%s:%d] disconnected' % (host,port))
 
+	def disconnect(self, fileno):
+		self.epoll.unregister(fileno)
+		self.connections[fileno].close()
+		del self.connections[fileno]
+		del self.responses[fileno]
+
 	def run(self):
 		try:
 		   while True:
@@ -129,11 +135,8 @@ class Server():
 				elif event & select.EPOLLOUT:
 					self.handle_write_events(fileno)
 
-				elif event & select.EPOLLHUP:												# Client hang ups 
-					self.epoll.unregister(fileno)
-					self.connections[fileno].close()
-					del self.connections[fileno]
-					del self.responses[fileno]
+				elif event & select.EPOLLHUP:
+					self.disconnect(fileno)
 		finally:
 		   self.epoll.unregister(self.servSock.fileno())
 		   self.epoll.close()
