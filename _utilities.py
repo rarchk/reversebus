@@ -1,3 +1,4 @@
+"""Basic utility functions."""
 import json
 import logging
 import sys
@@ -5,10 +6,8 @@ import sys
 import xmltodict
 
 
-''' Loads a json based configuration file into dict '''
-
-
 def load_config(path):
+	"""Load config from json based file to dict."""
 	try:
 		with open(path, 'r') as f:
 			config_dict = json.loads(f.read())
@@ -17,10 +16,9 @@ def load_config(path):
 		sys.exit(-1)
 	return config_dict
 
-'''Sets a log format and defines log handleling'''
-
 
 def init_logger(logger, config_dict):
+	"""Set a log format and defines log handleling."""
 	logger.setLevel(logging.INFO)
 
 	fh = logging.FileHandler(config_dict['log'])
@@ -31,6 +29,7 @@ def init_logger(logger, config_dict):
 
 
 def to_json(response, __type__):
+	"""Convert responses to json data."""
 	to_dict = dict()
 	if __type__ == "xml":
 		to_dict = xmltodict.parse(response)

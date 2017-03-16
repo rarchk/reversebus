@@ -1,18 +1,19 @@
+"""Reverse proxy for Next Bus server."""
 import argparse
 import logging
 import re
 import sys
 import time
 
-import caching
+import _cache
 
-import epollServer as epoll
+import _epollserver as epoll
 
 import requests
 
-import stats
+import _simpledb
 
-import utilities
+import _utilities
 
 __author__ = 'Ronak Kogta<rixor786@gmail.com>'
 __description__ = ''' Edge triggered Reverse proxy broker '''
@@ -22,7 +23,7 @@ Please refer https://github.com/rarchk/reversebus#examples'''
 
 logger = logging.getLogger()
 
-
+# API endpoints with their query points
 API_ENDPOINTS = {
     "useShortTitles": "&useShortTitles=True",
     "agencyList": ["agencyList"],
@@ -41,56 +42,62 @@ API_ENDPOINTS = {
 
 
 def parse_config(configure_options):
-	configure_options.add_argument('-p', '--port', help='Enter port number', default=8001)
-	configure_options.add_argument('--host', help='Enter host name', default='localhost')
-	configure_options.add_argument('-c', '--config', help='Enter config file', default='config.json')
+        """Parse configuration from commmand line."""
+	configure_options.add_argument('-p', '--port', help='Enter port number',
+     default=8001)
+	configure_options.add_argument('--host', help='Enter host name',
+     default='localhost')
+	configure_options.add_argument('-c', '--config', help='Enter config file',
+     default='config.json')
 
 ''' Check if configuration file is properly set'''
 
 
-def check_config(config_dict, logger):
-	target_url = (type(config_dict['target_url']) == unicode)
-	mongodb_address = (type(config_dict['mongodb_address']) == unicode)
-	redis_address = (type(config_dict['redis_address']) == unicode)
-	log = (type(config_dict['log']) == unicode)
-	redis_port = (type(config_dict['redis_port']) == int)
-	mongodb_port = (type(config_dict['mongodb_port']) == int)
-	redis_timeout = (type(config_dict['redis_timeout']) == int)
-	slow_requests_threshold = (type(config_dict['slow_requests_threshold']) == float)
+def check_config(config_dict, logger, config_file):
+        """Check if config file is correct."""
+	bool1 = (type(config_dict['target_url']) == unicode)
+	bool2 = (type(config_dict['mongodb_address']) == unicode)
+	bool3 = (type(config_dict['redis_address']) == unicode)
+	bool4 = (type(config_dict['log']) == unicode)
+	bool5 = (type(config_dict['redis_port']) == int)
+	bool6 = (type(config_dict['mongodb_port']) == int)
+	bool7 = (type(config_dict['redis_timeout']) == int)
+	bool8 = (type(config_dict['slow_requests_threshold']) == float)
 	
-	if not (target_url and mongodb_address and redis_address and log and\
-	 redis_port and mongodb_port and redis_timeout and slow_requests_threshold):
-		logger.error('Configuration file %s is not correctly configured' % CONFIG_FILE)
+	if not (bool1 and bool2 and bool3 and bool4 and bool5 and bool6 and
+     bool7 and bool8):
+		logger.error('Configuration file %s is not correctly configured'
+         % config_file)
 		sys.exit(-1)
 
 
 def request_handler(epoll_context, parameters):
+        """Application level request handler."""
 	startTime = time.time()
 	request, host, port = epoll_context
 	config_dict, pool = parameters
 	
 	try:
 		route, query_url = get_route(request, config_dict)
-		
-		
+
 		if (query_url == ""):
 			json_response = _default_response_
 
 		elif (query_url == "stats"):
-			json_response = stats.show()
+			json_response = _simpledb.show()
 		else:
-			response = caching.get_route(pool, route, config_dict['redis_timeout'])
+			response = _cache.get_route(pool, route, config_dict['redis_timeout'])
 			if(response == -1):
 				xml_response = requests.get(query_url)
-				json_response, dict_response = utilities.to_json(xml_response.text, "xml")
-				caching.set_route(pool, route, dict_response)
+				json_response, dict_response = _utilities.to_json(xml_response.text, "xml")
+				_cache.set_route(pool, route, dict_response)
 				
 			else:
-				json_response, _ = utilities.to_json(response, "dict")
+				json_response, _ = _utilities.to_json(response, "dict")
 
 		elapsed_time = time.time() - startTime
 		if (query_url != "stats" or query_url != ""):
-			stats.update(elapsed_time, route, config_dict)
+			_simpledb.update(elapsed_time, route, config_dict)
 		
 		logger.info("%s took %fs" % (route, elapsed_time))
 		return [200, "Content-Type: application/json\r\n\r\n", str(json_response)]
@@ -101,6 +108,7 @@ def request_handler(epoll_context, parameters):
 	
 
 def get_route(request, config_dict):
+        """Get routes for api endpoints."""
         try:
 	         route = re.search("GET (.*) HTTP", request).group(1)
         except:
@@ -119,7 +127,8 @@ def get_route(request, config_dict):
 		short = API_ENDPOINTS['useShortTitles']
 		del routers[-1]
         try:
-            query_url = next_xml_url(query_url, API_ENDPOINTS[str(routers[3])], routers) + short
+            query_url = next_xml_url(query_url, API_ENDPOINTS[str(routers[3])],
+             routers) + short
             print query_url
             return [route, query_url]
         except Exception as e:
@@ -127,6 +136,7 @@ def get_route(request, config_dict):
 
 
 def next_xml_url(query_url, query_points, routers):
+    """Generate xml url based on next api endpoints."""
     index = 4
     last_query_point = ""
     query = str(query_points[0])
@@ -149,10 +159,11 @@ if __name__ == '__main__':
 	parse_config(configure_options)
 	args = configure_options.parse_args()
 
-	config_dict = utilities.load_config(args.config)
-	utilities.init_logger(logger, config_dict)
-	check_config(config_dict, logger)
-	pool = caching.init(config_dict)
+	config_dict = _utilities.load_config(args.config)
+	_utilities.init_logger(logger, config_dict)
+	check_config(config_dict, logger, args.config)
+	pool = _cache.init(config_dict)
 
-	thisserver = epoll.Server(int(args.port), args.host, request_handler, [config_dict,pool])
+	thisserver = epoll.Server(int(args.port), args.host, request_handler,
+     [config_dict, pool])
 	thisserver.run()

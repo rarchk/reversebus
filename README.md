@@ -103,9 +103,11 @@ The application address is, by default, `127.0.0.1:8001/`. A brief description o
 5. `api/v1/predictionsForMultiStops/sf-muni/N|6997/N|3909{/useShortTitles}`		
 6. `api/v1/schedule/sf-muni/E`
 7. `api/v1/vehicleLocations/sf-muni/E/0`
+8. `stats`
    
 
 
 ## References 
 - [Next Bus XML Feed Documentation](http://www.nextbus.com/xmlFeedDocs/NextBusXMLFeed.pdf)
 - [Function Reference](docs/functionReference.md)
+- [DMBI Reverse Proxy](https://github.com/dmbi/NextBus-Reverse-Proxy)
