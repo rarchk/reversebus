@@ -88,12 +88,20 @@ def request_handler(epoll_context, parameters):
 			if(response == -1):
 				xml_response = requests.get(query_url)
 				json_response, dict_response = _utilities.to_json(xml_response.text, "xml")
-				_cache.set_route(pool, route, dict_response)
-
-				
+                                try:
+                                    init_response = (dict_response['body']['Error']['@shouldRetry'] == 'false')
+                                    if init_response:
+                                        error_msg = ("Incorrect request: %s" % route)
+                                    else:
+                                        error_msg = ("Server has not initalized, retry %s" % route)
+                                    logger.error(error_msg)
+                                    ex_resp, headers = to_gzip_response(error_msg,False)
+                                    return[400, headers, ex_resp]    
+                                except:
+                                    _cache.set_route(pool, route, dict_response)
 			else:
 				json_response, _ = _utilities.to_json(response, "dict")
-
+                
                 json_response, headers = to_gzip_response(json_response, gzip_flag)
 
 		elapsed_time = time.time() - startTime
@@ -105,7 +113,7 @@ def request_handler(epoll_context, parameters):
 		return [200, headers, str(json_response)]
 
 	except Exception as e:
-                ex_resp, headers = to_gzip_response(_default_response_,gzip_flag)
+                ex_resp, headers = to_gzip_response(_default_response_,False)
 		logger.error("Error in handling request:%s" % (e))
 		return [400, headers, ex_resp]
 	
