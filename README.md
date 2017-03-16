@@ -29,7 +29,7 @@ $> ./test.sh
 	- requests
 
 ## Design Specification
-<img src="reverseproxy.png" width="100%" height="auto"/>
+<img src="docs/reverseproxy.png" width="100%" height="auto"/>
 
 **Design Choices**
 

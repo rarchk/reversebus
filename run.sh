@@ -13,5 +13,5 @@ docker run -d -p 6379:6379 redis:alpine >/dev/null
 echo
 echo "#Starting Reverse Proxy"
 echo "======================="
-python reverseProxy.py
+python src/reverseProxy.py
  
