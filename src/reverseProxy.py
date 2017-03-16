@@ -4,6 +4,8 @@ import logging
 import re
 import sys
 import time
+import gzip
+import StringIO
 
 import _cache
 
@@ -38,8 +40,6 @@ API_ENDPOINTS = {
     "stats": ["stats"]
 }
 
-''' Handles cmdline argumets'''
-
 
 def parse_config(configure_options):
         """Parse configuration from commmand line."""
@@ -49,8 +49,6 @@ def parse_config(configure_options):
      default='localhost')
 	configure_options.add_argument('-c', '--config', help='Enter config file',
      default='config.json')
-
-''' Check if configuration file is properly set'''
 
 
 def check_config(config_dict, logger, config_file):
@@ -78,7 +76,7 @@ def request_handler(epoll_context, parameters):
 	config_dict, pool = parameters
 	
 	try:
-		route, query_url = get_route(request, config_dict)
+		route, query_url, gzip_flag = get_route(request, config_dict)
 
 		if (query_url == ""):
 			json_response = _default_response_
@@ -91,36 +89,47 @@ def request_handler(epoll_context, parameters):
 				xml_response = requests.get(query_url)
 				json_response, dict_response = _utilities.to_json(xml_response.text, "xml")
 				_cache.set_route(pool, route, dict_response)
+
 				
 			else:
 				json_response, _ = _utilities.to_json(response, "dict")
+
+                json_response, headers = to_gzip_response(json_response, gzip_flag)
 
 		elapsed_time = time.time() - startTime
 		if (query_url != "stats" or query_url != ""):
 			_simpledb.update(elapsed_time, route, config_dict)
 		
 		logger.info("%s took %fs" % (route, elapsed_time))
-		return [200, "Content-Type: application/json\r\n\r\n", str(json_response)]
+
+		return [200, headers, str(json_response)]
 
 	except Exception as e:
+                ex_resp, headers = to_gzip_response(_default_response_,gzip_flag)
 		logger.error("Error in handling request:%s" % (e))
-		return [400,"Content-Type: application/json\r\n\r\n", _default_response_]
+		return [400, headers, ex_resp]
 	
 
 def get_route(request, config_dict):
         """Get routes for api endpoints."""
+
         try:
 	         route = re.search("GET (.*) HTTP", request).group(1)
         except:
                  logger.error("Not a get request from client")
                  raise Exception
                  return
+        try:
+             encoding = re.search("Accept-Encoding: (.*)", request).group(1)
+             gzip_flag = ("gzip" in encoding)
+        except:
+             gzip_flag = False
 
 	query_url = config_dict['target_url'] + "/service/publicXMLFeed?command="
 	routers = route.split("/")
 			
 	if (route == "/"):
-		return [route, ""]
+		return [route, "", gzip_flag]
 
 	short = ""
 	if ('useShortTitles' == str(routers[-1])):
@@ -130,9 +139,9 @@ def get_route(request, config_dict):
             query_url = next_xml_url(query_url, API_ENDPOINTS[str(routers[3])],
              routers) + short
             print query_url
-            return [route, query_url]
+            return [route, query_url, gzip_flag]
         except Exception as e:
-            logger.error("Request '%s returned with %s " % (str(route),e))
+            logger.error("Request '%s returned with %s " % (str(route), e))
 
 
 def next_xml_url(query_url, query_points, routers):
@@ -153,6 +162,22 @@ def next_xml_url(query_url, query_points, routers):
 	query_url += last_query_point + str(routers[i])
 	
     return query_url
+
+def to_gzip_response(response,gzip_flag):
+    """ Return gzip compliant response and headers."""
+    headers = "Content-Type: application/json\r\n"
+    if (gzip_flag):
+        out = StringIO.StringIO()
+        with gzip.GzipFile(fileobj=out, mode="w") as f:
+            f.write(response)
+        headers += "Vary: Accept-Encoding\r\n"
+        headers += "Content-Encoding: gzip\r\n\r\n"
+        response = out.getvalue()
+        del out
+    else:
+        headers += "\r\n"    
+    return [response,headers]        
+
 
 if __name__ == '__main__':
 	configure_options = argparse.ArgumentParser(description=__description__)
