@@ -61,17 +61,18 @@ def request_handler(epoll_context, parameters):
 
         if query_url == "":
             json_response = _default_response_
-
         elif query_url == "stats":
             json_response = _simpledb.show()
         else:
+            # if response exists in cache
             response = _cache.get_route(
                 redis_pool, route, config_dict['redis_timeout'])
             if response == -1:
                 xml_response = requests.get(query_url)
                 json_response, dict_response = _utilities.to_json(
                     xml_response.text, "xml")
-                print json_response
+
+                # Checking for error requests
                 try:
                     init_response = dict_response['body'][
                         'Error']['@shouldRetry'] == 'false'
@@ -84,15 +85,21 @@ def request_handler(epoll_context, parameters):
                     logger.error(error_msg)
                     ex_resp, headers = to_gzip_response(error_msg, False)
                     return[400, headers, ex_resp + "\n" + error_cause]
+                # Insert Entry into cache
                 except:
                     _cache.set_route(redis_pool, route, dict_response)
             else:
                 json_response, _ = _utilities.to_json(response, "dict")
 
+        # Check for gzip headers, and retrurn relevant headers and response
         json_response, headers = to_gzip_response(json_response, gzip_flag)
 
         elapsed_time = time.time() - start_time
-        if query_url != "stats" or query_url != "":
+
+        # updating stats
+        if query_url == "stats" or query_url == "":
+            pass
+        else:
             _simpledb.update(elapsed_time, route, config_dict)
 
         logger.info("%s took %fs" % (route, elapsed_time))
@@ -125,14 +132,13 @@ def get_route(request, config_dict):
     if route == "/":
         return [route, "", gzip_flag]
 
-    short = ""
+    short_title = ""
     if str(routers[-1]) == 'useShortTitles':
-        short = API_ENDPOINTS['useShortTitles']
+        short_title = API_ENDPOINTS['useShortTitles']
         del routers[-1]
     try:
         query_url = next_xml_url(query_url, API_ENDPOINTS[str(routers[3])],
-                                 routers) + short
-        print query_url
+                                 routers) + short_title
         return [route, query_url, gzip_flag]
     except Exception as e:
         logger.error("Request '%s returned with %s " % (str(route), e))
