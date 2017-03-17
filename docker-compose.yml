@@ -1,6 +1,6 @@
 nextbus:
   build: .
-  command: python reverseProxy.py
+  command: python src/reverseProxy.py
   ports:
    - "8001:8001"
   volumes:
