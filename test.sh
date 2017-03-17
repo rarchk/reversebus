@@ -18,7 +18,8 @@ function endpointTesting()
 
     for i in "${endpoints[@]}"
     do
-    if curl --head  --request GET http://127.0.0.1:8001/api/v1/$i | grep "json" > /dev/null; then
+    if curl -s --head  --request GET http://127.0.0.1:8001/api/v1/$i | grep "json" > /dev/null; then
+    sleep 0.1
     echo "Endpoint "$i "is OK"
     else
     echo "Endpoint "$i "is NOT OK"
@@ -26,4 +27,35 @@ function endpointTesting()
     done
 }
 
+function gzipTesting()
+{
+    if curl -s -H "Accept-Encoding: gzip, deflate" --head  --request GET http://127.0.0.1:8001/api/v1/agencyList | grep "gzip" > /dev/null; then
+    sleep 0.1
+    echo "gzip responses is OK"
+    else
+    echo "gzip responses is NOT OK"
+    fi    
+}
+
+function queryErrors()
+{
+    if curl -s --request GET http://127.0.0.1:8001/api/v1/predictByStop/sf-muni/E/518s4 | grep "Incorrect" > /dev/null; then
+    sleep 0.1
+    echo "query errors are handled"
+    else
+    echo "query responses are not handled"
+    fi    
+}
+echo "Checking Endpoints"
+echo "=================="
 endpointTesting
+
+echo 
+echo "Checking gzip responses"
+echo "======================="
+gzipTesting
+
+echo 
+echo "Checking error handeling in query points of api"
+echo "==============================================="
+queryErrors

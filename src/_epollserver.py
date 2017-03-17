@@ -10,8 +10,8 @@ import _utilities
 CONFIG_FILE = 'epollConfig.json'
 
 HTTP_RESPONSE = {
-    400: 'HTTP/1.0 400 OK\r\n',
-    200: 'HTTP/1.0 200 OK\r\n'
+    '400': 'HTTP/1.0 400 OK\r\n',
+    '200': 'HTTP/1.0 200 OK\r\n'
 }
 
 

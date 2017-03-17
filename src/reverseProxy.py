@@ -84,7 +84,7 @@ def request_handler(epoll_context, parameters):
                             "Server has not initalized, retry %s" % route)
                     logger.error(error_msg)
                     ex_resp, headers = to_gzip_response(error_msg, False)
-                    return[400, headers, ex_resp + "\n" + error_cause]
+                    return['400', headers, ex_resp + "\n" + error_cause]
                 # Insert Entry into cache
                 except:
                     _cache.set_route(redis_pool, route, dict_response)
@@ -103,13 +103,12 @@ def request_handler(epoll_context, parameters):
             _simpledb.update(elapsed_time, route, config_dict)
 
         logger.info("%s took %fs" % (route, elapsed_time))
-
-        return [200, headers, str(json_response)]
+        return ['200', headers, str(json_response)]
 
     except Exception as e:
         ex_resp, headers = to_gzip_response(_default_response_, False)
         logger.error("Error in handling request:%s" % (e))
-        return [400, headers, ex_resp]
+        return ['400', headers, ex_resp]
 
 
 def get_route(request, config_dict):
@@ -117,7 +116,7 @@ def get_route(request, config_dict):
     try:
         route = re.search("GET (.*) HTTP", request).group(1)
     except:
-        logger.error("Not a get request from client")
+        logger.error("Not a get request from client %s" % request)
         raise Exception
         return
     try:
@@ -166,12 +165,12 @@ def next_xml_url(query_url, query_points, routers):
 
 def to_gzip_response(response, gzip_flag):
     """Return gzip compliant response and headers."""
-    headers = "Content-Type: application/json\r\n"
+    headers = "Content-Type: application/json\n"
     if gzip_flag:
         out = StringIO.StringIO()
         with gzip.GzipFile(fileobj=out, mode="w") as f:
             f.write(response)
-        headers += "Vary: Accept-Encoding\r\n"
+        headers += "Vary: Accept-Encoding\n"
         headers += "Content-Encoding: gzip\r\n\r\n"
         response = out.getvalue()
         del out
